@@ -9,7 +9,12 @@ from sklearn.model_selection import GroupKFold
 
 
 def fire_id_from_path(path: Path) -> str:
-    return path.stem.replace("_patches", "")
+    stem = path.stem
+    if stem.endswith("_cnn_patches"):
+        return stem[: -len("_cnn_patches")]
+    if stem.endswith("_patches"):
+        return stem[: -len("_patches")]
+    return stem
 
 
 def group_patch_files_by_fire(patch_files: list[Path]) -> dict[str, list[Path]]:

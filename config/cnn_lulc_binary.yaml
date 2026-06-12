@@ -1,0 +1,102 @@
+# CNN clasificadora de patches — solo LULC one-hot, severidad binaria (centro del patch)
+# Reutiliza rasters procesados del experimento binary; rutas de patches/outputs separadas.
+
+data:
+  fires_root: "data/raw/fires_binary"
+  processed_root: "data/processed_binary"
+  patches_root: "data/patches_cnn_lulc_binary"
+  target_crs: "EPSG:4326"
+  target_resolution: 0.00026949458523585647
+  skip_align: true
+
+lulc:
+  classes:
+    1: forest
+    2: shrubland
+    3: grassland
+    4: plantation
+    5: agriculture
+    6: urban
+    7: water
+    8: bare_other
+  combustible_classes: [1, 2, 3, 4]
+  remap:
+    3: 1
+    59: 1
+    60: 1
+    67: 1
+    10: 3
+    11: 7
+    12: 3
+    63: 3
+    66: 2
+    29: 8
+    14: 5
+    9: 4
+    18: 5
+    15: 5
+    22: 8
+    24: 6
+    23: 8
+    25: 8
+    61: 8
+    26: 7
+    33: 7
+    34: 8
+    27: 8
+    79: 8
+    80: 8
+
+severity:
+  mode: "dnbr_thresholds"
+  dnbr_value_scale: 1.0
+  dnbr_nodata: null
+  class_ranges:
+    1: [0.100, 0.439]
+    2: [0.440, 1.300]
+  class_map:
+    0: 0
+    1: 1
+    2: 2
+  class_names:
+    0: outside
+    1: low
+    2: high
+
+patches:
+  size: 32
+  stride: 16
+  min_burn_fraction: 0.25
+  min_valid_severity_fraction: 0.20
+  max_outside_scar_fraction: 0.75
+  max_invalid_lulc_fraction: 0.10
+  label_strategy: "center"   # center | dominant
+  random_seed: 42
+
+cnn:
+  dropout: 0.3
+  num_classes: 2
+  use_class_weights: true
+  use_weighted_sampler: false
+
+training:
+  batch_size: 64
+  epochs: 50
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  num_workers: 0
+  checkpoint_dir: "checkpoints_cnn_lulc_binary"
+  outputs_dir: "outputs_cnn_lulc_binary"
+  device: "auto"
+
+validation:
+  strategy: "holdout_fires"
+  val_fraction: 0.30
+  random_seed: 42
+  run_name: "holdout_7030"
+  n_folds: 5
+
+interpretability:
+  top_k_patches: 50
+  output_dir: "outputs_cnn_lulc_binary"
+  run_embeddings: true
