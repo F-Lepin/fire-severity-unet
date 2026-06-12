@@ -11,16 +11,19 @@
 #SBATCH -o /home/%u/logs/%x_%j.out
 #SBATCH -e /home/%u/logs/%x_%j.err
 
-# set -e: fallar si un comando falla; sin -u para no romper source ~/.bashrc en NLHPC
+echo "=== START job=${SLURM_JOB_ID:-?} $(date) host=$(hostname) ==="
+
 set -eo pipefail
 
-source ~/.bashrc
-conda activate mb_fuego
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/slurm_env.sh"
+activate_mb_fuego
 
 mkdir -p ~/logs
 cd ~/X_CONGRESO/fire-severity-unet
 
-echo "Host: $(hostname)  Fold: 0  Date: $(date)"
+echo "Python: $(which python)"
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
 python scripts/train.py --config config/leftraru_binary.yaml --fold 0
@@ -30,4 +33,4 @@ python scripts/analyze_results.py \
   --checkpoint checkpoints_binary/fold_0/best_model.pt \
   --fold 0
 
-echo "Train + analyze fold 0 done."
+echo "=== DONE fold 0 $(date) ==="

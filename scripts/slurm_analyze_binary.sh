@@ -12,12 +12,15 @@
 #SBATCH -o /home/%u/logs/%x_%j.out
 #SBATCH -e /home/%u/logs/%x_%j.err
 
+FOLD=${FOLD:-0}
+echo "=== START analyze fold=$FOLD job=${SLURM_JOB_ID:-?} $(date) ==="
+
 set -eo pipefail
 
-FOLD=${FOLD:-0}
-
-source ~/.bashrc
-conda activate mb_fuego
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/slurm_env.sh"
+activate_mb_fuego
 
 mkdir -p ~/logs
 cd ~/X_CONGRESO/fire-severity-unet
@@ -27,4 +30,4 @@ python scripts/analyze_results.py \
   --checkpoint "checkpoints_binary/fold_${FOLD}/best_model.pt" \
   --fold "$FOLD"
 
-echo "Analyze fold $FOLD done."
+echo "=== DONE analyze fold $FOLD $(date) ==="

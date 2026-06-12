@@ -12,19 +12,22 @@
 #SBATCH -o /home/%u/logs/%x_%A_%a.out
 #SBATCH -e /home/%u/logs/%x_%A_%a.err
 
+FOLD=${SLURM_ARRAY_TASK_ID:-0}
+echo "=== START job=${SLURM_JOB_ID:-?} fold=$FOLD $(date) host=$(hostname) ==="
+
 set -eo pipefail
 
-FOLD=${SLURM_ARRAY_TASK_ID:-0}
-
-source ~/.bashrc
-conda activate mb_fuego
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/slurm_env.sh"
+activate_mb_fuego
 
 mkdir -p ~/logs
 cd ~/X_CONGRESO/fire-severity-unet
 
-echo "Host: $(hostname)  Fold: $FOLD  Date: $(date)"
+echo "Python: $(which python)"
 python -c "import torch; print('CUDA:', torch.cuda.is_available())"
 
 python scripts/train.py --config config/leftraru_binary.yaml --fold "$FOLD"
 
-echo "Done fold $FOLD"
+echo "=== DONE fold $FOLD $(date) ==="
