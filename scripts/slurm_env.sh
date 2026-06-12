@@ -1,5 +1,6 @@
-# Cargar conda en jobs SLURM sin source ~/.bashrc (evita BASHRCSOURCED en NLHPC)
+# Cargar conda en jobs SLURM (sin nounset: evita errores en hooks de geotiff/etc.)
 activate_mb_fuego() {
+    set +u
     if [ -f "${HOME}/.conda/etc/profile.d/conda.sh" ]; then
         # shellcheck disable=SC1091
         source "${HOME}/.conda/etc/profile.d/conda.sh"
@@ -10,10 +11,8 @@ activate_mb_fuego() {
         # shellcheck disable=SC1091
         source "${HOME}/anaconda3/etc/profile.d/conda.sh"
     else
-        set +u
         # shellcheck disable=SC1090
         source "${HOME}/.bashrc"
-        set -u
     fi
     conda activate mb_fuego
 }

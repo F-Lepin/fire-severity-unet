@@ -15,13 +15,13 @@
 FOLD=${SLURM_ARRAY_TASK_ID:-0}
 echo "=== START job=${SLURM_JOB_ID:-?} fold=$FOLD $(date) host=$(hostname) ==="
 
-set -eo pipefail
-
 PROJECT_DIR="${SLURM_SUBMIT_DIR:-${HOME}/X_CONGRESO/fire-severity-unet}"
 cd "${PROJECT_DIR}"
 # shellcheck disable=SC1091
 source "${PROJECT_DIR}/scripts/slurm_env.sh"
 activate_mb_fuego
+
+set -eo pipefail
 
 mkdir -p ~/logs
 
