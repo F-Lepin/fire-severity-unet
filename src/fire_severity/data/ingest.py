@@ -57,13 +57,13 @@ def ingest_multiband_raster(
         idx_dnbr = band_dnbr or _band_index(src, ["dnbr"], 2)
         idx_scar = band_scar or _band_index(src, ["scar", "mask"], 3)
 
-        lulc = src.read(idx_lulc)
+        lulc = np.round(src.read(idx_lulc)).astype(np.int32)
         dnbr = src.read(idx_dnbr)
         scar = src.read(idx_scar)
         profile = src.profile.copy()
         profile.update(count=1, compress="lzw")
 
-    scar_bin = (scar > 0).astype(np.int16)
+    scar_bin = (np.isfinite(scar) & (scar > 0)).astype(np.int16)
 
     if lulc_remap:
         lulc_out = remap_lulc(lulc, {int(k): int(v) for k, v in lulc_remap.items()})
