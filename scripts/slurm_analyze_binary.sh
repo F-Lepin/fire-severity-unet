@@ -17,13 +17,13 @@ echo "=== START analyze fold=$FOLD job=${SLURM_JOB_ID:-?} $(date) ==="
 
 set -eo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="${SLURM_SUBMIT_DIR:-${HOME}/X_CONGRESO/fire-severity-unet}"
+cd "${PROJECT_DIR}"
 # shellcheck disable=SC1091
-source "${SCRIPT_DIR}/slurm_env.sh"
+source "${PROJECT_DIR}/scripts/slurm_env.sh"
 activate_mb_fuego
 
 mkdir -p ~/logs
-cd ~/X_CONGRESO/fire-severity-unet
 
 python scripts/analyze_results.py \
   --config config/leftraru_binary.yaml \
