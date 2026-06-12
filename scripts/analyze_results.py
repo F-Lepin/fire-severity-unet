@@ -18,6 +18,7 @@ from fire_severity.interpretability.analysis import (
     compare_lulc_composition,
     grad_cam_spatial,
     plot_composition_by_severity,
+    plot_lulc_proportions_by_severity,
     plot_patch_triplet,
     rank_patches_by_class,
 )
@@ -53,6 +54,9 @@ def main() -> None:
     class_ids = lulc_class_ids(cfg)
     comb_ids = combustible_ids(cfg)
     class_names = {int(k): v for k, v in cfg["severity"]["class_names"].items()}
+    lulc_names = {int(k): v for k, v in cfg["lulc"]["classes"].items()}
+    sev_classes = severity_class_ids(cfg)
+    sev_vmax = max(sev_classes)
 
     # LULC composition by observed dominant severity at patch center
     x_all = np.stack([ds[i]["x"].numpy() for i in range(len(ds))])
@@ -70,11 +74,11 @@ def main() -> None:
         "shannon_diversity",
     ]
     plot_composition_by_severity(comp_df, metric_cols, out_dir / "composition_by_severity.png")
+    plot_lulc_proportions_by_severity(comp_df, lulc_names, out_dir / "lulc_proportions_by_severity.png")
 
     # High-confidence patches per severity class
     loss_masks = np.stack([ds[i]["loss_mask"].numpy() for i in range(len(ds))])
-    sev_classes = severity_class_ids(cfg)
-    high_sev = max(sev_classes)
+    high_sev = sev_vmax
     for sev in sev_classes:
         ranked = rank_patches_by_class(
             probs, y_true, loss_masks, meta, sev, top_k=icfg["top_k_patches"]
@@ -94,6 +98,7 @@ def main() -> None:
                 class_names,
                 out_dir / f"example_class_{sev}_rank{plot_rank}.png",
                 title=f"Clase {class_names[sev]} — conf={row['confidence']:.2f}",
+                sev_vmax=sev_vmax,
             )
 
             if sev == high_sev and plot_rank < 3:

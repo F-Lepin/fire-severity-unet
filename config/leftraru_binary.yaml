@@ -1,5 +1,6 @@
-# LEFTRARU — config activa: severidad BINARIA (baja / alta)
-# Experimento 4 clases: config/leftraru_4class.yaml
+# LEFTRARU — 2 clases de severidad (baja / alta), umbral MTBS en 0.440
+# Agrupa: low+moderate-low (1) vs moderate-high+high (2)
+# Rutas separadas para no sobrescribir el experimento de 4 clases.
 
 data:
   fires_root: "data/raw/fires_binary"
@@ -58,9 +59,10 @@ severity:
   mode: "dnbr_thresholds"
   dnbr_value_scale: 1.0
   dnbr_nodata: null
+  # Baja: MTBS low + moderate-low | Alta: moderate-high + high
   class_ranges:
-    1: [0.100, 0.439]   # baja (MTBS low + moderate-low)
-    2: [0.440, 1.300]   # alta (MTBS moderate-high + high)
+    1: [0.100, 0.439]
+    2: [0.440, 1.300]
   class_map:
     0: 0
     1: 1
@@ -81,7 +83,7 @@ patches:
 
 model:
   in_channels: 8
-  num_classes: 3
+  num_classes: 3   # 0=ignore + 2 severidades
   base_channels: 32
   encoder_depth: 2
 

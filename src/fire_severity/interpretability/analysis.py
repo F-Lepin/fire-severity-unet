@@ -112,15 +112,19 @@ def plot_patch_triplet(
     class_names: dict[int, str],
     out_path: Path,
     title: str = "",
+    sev_vmin: int = 1,
+    sev_vmax: int | None = None,
 ) -> None:
+    if sev_vmax is None:
+        sev_vmax = max(k for k in class_names if k > 0)
     fig, axes = plt.subplots(1, 3, figsize=(10, 3.5))
     axes[0].imshow(lulc, cmap="tab10", vmin=min(class_ids), vmax=max(class_ids))
     axes[0].set_title("LULC previo")
     sev_display = np.where(loss_mask, severity, np.nan)
-    axes[1].imshow(sev_display, cmap="YlOrRd", vmin=1, vmax=3)
+    axes[1].imshow(sev_display, cmap="YlOrRd", vmin=sev_vmin, vmax=sev_vmax)
     axes[1].set_title("Severidad observada")
     pred_display = np.where(loss_mask, pred, np.nan)
-    axes[2].imshow(pred_display, cmap="YlOrRd", vmin=1, vmax=3)
+    axes[2].imshow(pred_display, cmap="YlOrRd", vmin=sev_vmin, vmax=sev_vmax)
     axes[2].set_title("Predicción")
     for ax in axes:
         ax.axis("off")
@@ -141,10 +145,30 @@ def plot_composition_by_severity(
     grouped.plot(kind="bar", figsize=(10, 4), rot=0)
     plt.ylabel("Valor medio en patch")
     plt.xlabel("Clase de severidad")
-    plt.title("Composición LULC por severidad (patches)")
+    plt.title("Métricas de paisaje por severidad (patches)")
     plt.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_path, dpi=150)
+    plt.close()
+
+
+def plot_lulc_proportions_by_severity(
+    df: pd.DataFrame,
+    lulc_names: dict[int, str],
+    out_path: Path,
+) -> None:
+    """Bar chart of mean LULC class proportions per severity label."""
+    prop_cols = [c for c in df.columns if c.startswith("prop_")]
+    grouped = df.groupby("severity_label")[prop_cols].mean()
+    grouped.columns = [lulc_names.get(int(c.split("_")[1]), c) for c in prop_cols]
+    grouped.plot(kind="bar", figsize=(10, 4), rot=0)
+    plt.ylabel("Proporción media en patch")
+    plt.xlabel("Clase de severidad")
+    plt.title("Composición LULC por severidad (patches)")
+    plt.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
+    plt.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    plt.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close()
 
 

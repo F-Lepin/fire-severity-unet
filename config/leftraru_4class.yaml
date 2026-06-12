@@ -1,10 +1,10 @@
-# LEFTRARU — config activa: severidad BINARIA (baja / alta)
-# Experimento 4 clases: config/leftraru_4class.yaml
+# LEFTRARU — 4 clases MTBS (experimento original)
+# Uso: --config config/leftraru_4class.yaml
 
 data:
-  fires_root: "data/raw/fires_binary"
-  processed_root: "data/processed_binary"
-  patches_root: "data/patches_binary"
+  fires_root: "data/raw/fires"
+  processed_root: "data/processed"
+  patches_root: "data/patches"
   target_crs: "EPSG:4326"
   target_resolution: 0.00026949458523585647
   skip_align: true
@@ -59,16 +59,22 @@ severity:
   dnbr_value_scale: 1.0
   dnbr_nodata: null
   class_ranges:
-    1: [0.100, 0.439]   # baja (MTBS low + moderate-low)
-    2: [0.440, 1.300]   # alta (MTBS moderate-high + high)
+    1: [0.100, 0.269]
+    2: [0.270, 0.439]
+    3: [0.440, 0.659]
+    4: [0.660, 1.300]
   class_map:
     0: 0
     1: 1
     2: 2
+    3: 3
+    4: 4
   class_names:
     0: outside
     1: low
-    2: high
+    2: moderate_low
+    3: moderate_high
+    4: high
 
 patches:
   size: 32
@@ -81,7 +87,7 @@ patches:
 
 model:
   in_channels: 8
-  num_classes: 3
+  num_classes: 5
   base_channels: 32
   encoder_depth: 2
 
@@ -91,8 +97,8 @@ training:
   learning_rate: 0.001
   weight_decay: 0.0001
   num_workers: 0
-  checkpoint_dir: "checkpoints_binary"
-  outputs_dir: "outputs_binary"
+  checkpoint_dir: "checkpoints"
+  outputs_dir: "outputs"
   device: "auto"
 
 validation:
@@ -102,4 +108,4 @@ validation:
 interpretability:
   top_k_patches: 50
   confidence_threshold: 0.7
-  output_dir: "outputs/interpretability_binary"
+  output_dir: "outputs/interpretability"

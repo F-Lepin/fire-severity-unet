@@ -51,7 +51,7 @@ def main() -> None:
 
     model, history = train_model(train_files, val_files, cfg["model"], train_cfg)
 
-    out_dir = Path("outputs") / f"fold_{args.fold}"
+    out_dir = Path(tcfg.get("outputs_dir", "outputs")) / f"fold_{args.fold}"
     out_dir.mkdir(parents=True, exist_ok=True)
     plot_training_history(history, out_dir / "training_curves.png")
     with open(out_dir / "history.json", "w", encoding="utf-8") as f:

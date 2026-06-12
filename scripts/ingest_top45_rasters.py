@@ -7,7 +7,7 @@ import argparse
 import shutil
 from pathlib import Path
 
-from fire_severity.config import load_config, severity_class_ranges
+from fire_severity.config import load_config, severity_class_ids, severity_class_ranges
 from fire_severity.data.ingest import ingest_multiband_raster, parse_fire_id
 
 
@@ -77,12 +77,13 @@ def main() -> None:
 
         n_valid_sev = sum(c for k, c in summary["severity_counts_in_scar"].items() if k > 0)
         n_sev_classes = sum(1 for k in summary["severity_unique_in_scar"] if k > 0)
+        expected_sev = len(severity_class_ids(cfg))
         if len(summary["dnbr_unique_in_scar"]) <= 2:
-            print("  ⚠ Banda dNBR casi binaria (≤2 valores). No hay gradiente para 4 clases MTBS.")
+            print("  ⚠ Banda dNBR casi binaria (≤2 valores). Revisar exportación del raster.")
         if n_sev_classes < 2:
             print("  ⚠ Menos de 2 clases de severidad válidas — no entrenar hasta corregir dNBR.")
-        elif n_sev_classes < 4:
-            print(f"  ⚠ Solo {n_sev_classes} clase(s) de severidad presentes (se esperan 4).")
+        elif n_sev_classes < expected_sev:
+            print(f"  ⚠ Solo {n_sev_classes} clase(s) de severidad (config espera {expected_sev}).")
         if summary["lulc_unmapped_pixels"] > 0:
             print("  ⚠ Hay píxeles LULC sin mapear (clase 0) — ampliar lulc.remap en config.")
 

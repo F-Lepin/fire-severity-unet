@@ -13,6 +13,11 @@ data/processed/
 data/patches/
 outputs/
 checkpoints/
+checkpoints_binary/
+outputs_binary/
+data/processed_binary/
+data/patches_binary/
+data/raw/fires_binary/
 *.tif
 *.tiff
 *.npz
