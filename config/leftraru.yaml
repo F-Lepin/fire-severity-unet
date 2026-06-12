@@ -29,34 +29,41 @@ lulc:
     7: water
     8: bare_other
   combustible_classes: [1, 2, 3, 4]
-  # MapBiomas Chile → clases agregadas (completar tras inspect_fire_rasters.py)
+  # MapBiomas Chile Colección 2 → clases agregadas del modelo
+  # Leyenda: https://chile.mapbiomas.org/codigos-de-la-leyenda/
   remap:
-    3: 1    # formación boscosa
-    4: 4    # plantación
-    5: 1    # bosque abierto / leñosa
-    6: 2    # arbustal
-    9: 7    # humedal / agua — revisar código real en tus datos
-    10: 7
-    11: 3   # herbácea
-    12: 2
-    15: 5   # agricultura
-    18: 5
-    19: 5
-    23: 6   # área urbana
-    24: 6
-    26: 7   # cuerpo de agua
-    30: 6
-    33: 7
-    35: 8
-    36: 8
-    39: 5
-    40: 5
-    41: 5
-    46: 8
-    47: 8
-    48: 8
-    49: 1
-    66: 8   # no observado
+    # Bosque (1. Formación boscosa)
+    3: 1     # bosque (nivel 2)
+    59: 1    # bosque primario
+    60: 1    # bosque secundario
+    67: 1    # bosque achaparrado
+    # Formación natural no boscosa (2)
+    10: 3    # nivel 2 herbáceo/natural
+    11: 7    # humedal
+    12: 3    # pastizal
+    63: 3    # estepa
+    66: 2    # matorral
+    29: 8    # afloramiento rocoso
+    # Agropecuaria y silvicultura (3)
+    14: 5    # nivel 2 agropecuario
+    9: 4     # silvicultura → plantación
+    18: 5    # agricultura
+    15: 5    # pastura
+    # Área sin vegetación (4)
+    22: 8    # nivel 2 sin vegetación
+    24: 6    # infraestructura → urbano
+    23: 8    # arena, playa y duna
+    25: 8    # otra área sin vegetación
+    61: 8    # salar
+    # Cuerpo de agua (5)
+    26: 7
+    33: 7    # río, lago u océano
+    34: 8    # hielo y nieve
+    # No observado (6)
+    27: 8
+    # Códigos raros en top-45 (default conservador)
+    79: 8
+    80: 8
 
 severity:
   mode: "dnbr_thresholds"
