@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from sklearn.model_selection import GroupKFold
 
 
 def fire_id_from_path(path: Path) -> str:
@@ -87,6 +86,8 @@ def kfold_fire_splits(
         for f in groups[fid]:
             file_list.append(f)
             group_ids.append(fid)
+
+    from sklearn.model_selection import GroupKFold
 
     gkf = GroupKFold(n_splits=min(n_folds, len(fire_ids)))
     splits = []

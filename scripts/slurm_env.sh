@@ -15,4 +15,8 @@ activate_mb_fuego() {
         source "${HOME}/.bashrc"
     fi
     conda activate mb_fuego
+    # Prefer conda libstdc++ over older system /lib64/libstdc++.so.6 (scipy/sklearn).
+    if [ -n "${CONDA_PREFIX:-}" ] && [ -d "${CONDA_PREFIX}/lib" ]; then
+        export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+    fi
 }

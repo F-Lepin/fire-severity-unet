@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from sklearn.decomposition import PCA
 from torch.utils.data import DataLoader
 
 from fire_severity.config import combustible_ids, lulc_class_ids
@@ -75,6 +74,16 @@ def export_example_patches(
         )
 
 
+def _pca_2d(embeddings: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Two-component PCA via SVD (no sklearn)."""
+    x = embeddings - embeddings.mean(axis=0, keepdims=True)
+    _, singular_values, vt = np.linalg.svd(x, full_matrices=False)
+    coords = x @ vt[:2].T
+    variance = singular_values ** 2
+    explained = variance / max(variance.sum(), 1e-8)
+    return coords, explained
+
+
 def plot_embeddings_pca(
     embeddings: np.ndarray,
     labels: np.ndarray,
@@ -82,14 +91,13 @@ def plot_embeddings_pca(
 ) -> None:
     if len(embeddings) < 3:
         return
-    pca = PCA(n_components=2, random_state=42)
-    coords = pca.fit_transform(embeddings)
+    coords, explained = _pca_2d(embeddings)
     fig, ax = plt.subplots(figsize=(6, 5))
     for label, name, color in [(0, "baja", "#4C72B0"), (1, "alta", "#C44E52")]:
         mask = labels == label
         ax.scatter(coords[mask, 0], coords[mask, 1], s=8, alpha=0.5, label=name, c=color)
-    ax.set_xlabel(f"PC1 ({pca.explained_variance_ratio_[0]:.1%})")
-    ax.set_ylabel(f"PC2 ({pca.explained_variance_ratio_[1]:.1%})")
+    ax.set_xlabel(f"PC1 ({explained[0]:.1%})")
+    ax.set_ylabel(f"PC2 ({explained[1]:.1%})")
     ax.set_title("Embeddings CNN (PCA)")
     ax.legend()
     fig.tight_layout()

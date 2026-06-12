@@ -1,22 +1,26 @@
 #!/bin/bash
-#SBATCH --job-name=cnn_lulc
-#SBATCH --partition=main
-#SBATCH --time=02:00:00
-#SBATCH --mem=32G
-#SBATCH --cpus-per-task=8
-#SBATCH --mail-type=END,FAIL
+#SBATCH -J cnn_lulc
+#SBATCH -p main
+#SBATCH -n 1
+#SBATCH -c 8
+#SBATCH --mem=32GB
 #SBATCH --mail-user=felipe.lepin@ug.uchile.cl
-#SBATCH --output=%x_%j.out
-#SBATCH --error=%x_%j.err
+#SBATCH --mail-type=ALL
+#SBATCH -t 02:00:00
+#SBATCH -o /home/%u/logs/%x_%j.out
+#SBATCH -e /home/%u/logs/%x_%j.err
 
 set -euo pipefail
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
+mkdir -p ~/logs
 
-if [[ -f scripts/slurm_env.sh ]]; then
-  # shellcheck disable=SC1091
-  source scripts/slurm_env.sh
-fi
+# shellcheck disable=SC1091
+source scripts/slurm_env.sh
+activate_mb_fuego
+set -e
 
+echo "Job started: $(date) on $(hostname)"
 python scripts/train_cnn_lulc_binary.py \
   --config config/cnn_lulc_binary.yaml \
   --generate-patches
+echo "Job finished: $(date)"
