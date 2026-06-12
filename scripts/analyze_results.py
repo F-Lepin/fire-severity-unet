@@ -11,7 +11,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 
-from fire_severity.config import combustible_ids, lulc_class_ids, load_config
+from fire_severity.config import combustible_ids, lulc_class_ids, load_config, severity_class_ids
 from fire_severity.data.dataset import FireSeverityPatchDataset, collate_batch
 from fire_severity.data.encoding import onehot_argmax
 from fire_severity.interpretability.analysis import (
@@ -73,7 +73,9 @@ def main() -> None:
 
     # High-confidence patches per severity class
     loss_masks = np.stack([ds[i]["loss_mask"].numpy() for i in range(len(ds))])
-    for sev in (1, 2, 3):
+    sev_classes = severity_class_ids(cfg)
+    high_sev = max(sev_classes)
+    for sev in sev_classes:
         ranked = rank_patches_by_class(
             probs, y_true, loss_masks, meta, sev, top_k=icfg["top_k_patches"]
         )
@@ -94,7 +96,7 @@ def main() -> None:
                 title=f"Clase {class_names[sev]} — conf={row['confidence']:.2f}",
             )
 
-            if sev == 3 and plot_rank < 3:
+            if sev == high_sev and plot_rank < 3:
                 cam = grad_cam_spatial(model, ds[idx]["x"], target_class=sev, device=device)
                 import matplotlib.pyplot as plt
 
@@ -102,10 +104,10 @@ def main() -> None:
                 ax[0].imshow(lulc, cmap="tab10")
                 ax[0].set_title("LULC")
                 ax[1].imshow(cam, cmap="hot")
-                ax[1].set_title("Grad-CAM (alta severidad)")
+                ax[1].set_title(f"Grad-CAM ({class_names[sev]})")
                 for a in ax:
                     a.axis("off")
-                fig.savefig(out_dir / f"gradcam_class3_rank{plot_rank}.png", dpi=150, bbox_inches="tight")
+                fig.savefig(out_dir / f"gradcam_class{sev}_rank{plot_rank}.png", dpi=150, bbox_inches="tight")
                 plt.close(fig)
 
     print(f"Interpretability outputs → {out_dir}")

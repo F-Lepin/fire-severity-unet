@@ -20,6 +20,7 @@ class PatchCriteria:
     samples_per_fire: int = 200
     balance_severity: bool = True
     random_seed: int = 42
+    severity_classes: tuple[int, ...] = (1, 2, 3, 4)
 
 
 @dataclass
@@ -124,7 +125,7 @@ def select_patches(
         return []
 
     accepted: list[PatchSample] = []
-    by_class: dict[int, list[PatchSample]] = {1: [], 2: [], 3: []}
+    by_class: dict[int, list[PatchSample]] = {c: [] for c in criteria.severity_classes}
 
     order = rng.permutation(len(centers))
     for idx in order:
@@ -142,9 +143,10 @@ def select_patches(
         indices = rng.choice(len(accepted), criteria.samples_per_fire, replace=False)
         return [accepted[i] for i in indices]
 
-    per_class = max(1, criteria.samples_per_fire // 3)
+    n_classes = len(criteria.severity_classes)
+    per_class = max(1, criteria.samples_per_fire // n_classes)
     balanced: list[PatchSample] = []
-    for sev_class in (1, 2, 3):
+    for sev_class in criteria.severity_classes:
         pool = by_class.get(sev_class, [])
         if not pool:
             continue

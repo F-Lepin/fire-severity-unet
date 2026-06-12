@@ -23,3 +23,17 @@ def num_lulc_channels(config: dict[str, Any]) -> int:
 
 def combustible_ids(config: dict[str, Any]) -> set[int]:
     return {int(v) for v in config["lulc"]["combustible_classes"]}
+
+
+def severity_class_ids(config: dict[str, Any]) -> list[int]:
+    """Model severity class ids (1..N), excluding 0=outside."""
+    if "class_names" in config.get("severity", {}):
+        return sorted(int(k) for k in config["severity"]["class_names"] if int(k) > 0)
+    if "class_ranges" in config.get("severity", {}):
+        return sorted(int(k) for k in config["severity"]["class_ranges"])
+    return [1, 2, 3]
+
+
+def severity_class_ranges(config: dict[str, Any]) -> dict[int, tuple[float, float]]:
+    raw = config["severity"]["class_ranges"]
+    return {int(k): (float(v[0]), float(v[1])) for k, v in raw.items()}

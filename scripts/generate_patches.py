@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from fire_severity.config import lulc_class_ids, load_config
+from fire_severity.config import lulc_class_ids, load_config, severity_class_ids
 from fire_severity.data.alignment import load_aligned_stack
 from fire_severity.data.patches import (
     PatchCriteria,
@@ -33,6 +33,7 @@ def process_fire(fire_id: str, cfg: dict) -> None:
         samples_per_fire=pcfg["samples_per_fire"],
         balance_severity=pcfg["balance_severity"],
         random_seed=pcfg["random_seed"],
+        severity_classes=tuple(severity_class_ids(cfg)),
     )
 
     class_ids = lulc_class_ids(cfg)

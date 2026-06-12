@@ -1,0 +1,116 @@
+# Configuración LEFTRARU — fire_top45 multi-band rasters
+# Ajustar tras: python scripts/inspect_fire_rasters.py
+
+data:
+  fires_root: "data/raw/fires"
+  processed_root: "data/processed"
+  patches_root: "data/patches"
+  # Rasters fuente ya en WGS84 ~30 m; no reproyectar si copy_to_processed=true
+  target_crs: "EPSG:4326"
+  target_resolution: 0.00026949458523585647
+  skip_align: true
+
+ingest:
+  source_glob: "/home/flepin/X_CONGRESO/raster/fire_top45_*.tif"
+  band_lulc: 1
+  band_dnbr: 2
+  band_scar: 3
+  copy_to_processed: true   # bandas ya co-registradas en el mismo GeoTIFF
+
+lulc:
+  # Clases agregadas del modelo (one-hot)
+  classes:
+    1: forest
+    2: shrubland
+    3: grassland
+    4: plantation
+    5: agriculture
+    6: urban
+    7: water
+    8: bare_other
+  combustible_classes: [1, 2, 3, 4]
+  # MapBiomas Chile → clases agregadas (completar tras inspect_fire_rasters.py)
+  remap:
+    3: 1    # formación boscosa
+    4: 4    # plantación
+    5: 1    # bosque abierto / leñosa
+    6: 2    # arbustal
+    9: 7    # humedal / agua — revisar código real en tus datos
+    10: 7
+    11: 3   # herbácea
+    12: 2
+    15: 5   # agricultura
+    18: 5
+    19: 5
+    23: 6   # área urbana
+    24: 6
+    26: 7   # cuerpo de agua
+    30: 6
+    33: 7
+    35: 8
+    36: 8
+    39: 5
+    40: 5
+    41: 5
+    46: 8
+    47: 8
+    48: 8
+    49: 1
+    66: 8   # no observado
+
+severity:
+  mode: "dnbr_thresholds"
+  # Escala de la banda dNBR: 1.0 si valores 0.100–1.300; 0.001 si enteros 100–1300
+  dnbr_value_scale: 1.0
+  dnbr_nodata: null
+  # 4 clases MTBS (dNBR decimal); píxeles < 0.100 dentro de cicatriz → 0 (sin dato)
+  class_ranges:
+    1: [0.100, 0.269]   # Low
+    2: [0.270, 0.439]   # Moderate-low
+    3: [0.440, 0.659]   # Moderate-high
+    4: [0.660, 1.300]   # High
+  class_map:
+    0: 0
+    1: 1
+    2: 2
+    3: 3
+    4: 4
+  class_names:
+    0: outside
+    1: low
+    2: moderate_low
+    3: moderate_high
+    4: high
+
+patches:
+  size: 32
+  min_burn_fraction: 0.25
+  min_valid_severity_fraction: 0.20
+  max_outside_scar_fraction: 0.75
+  samples_per_fire: 200
+  balance_severity: true
+  random_seed: 42
+
+model:
+  in_channels: 8
+  num_classes: 5   # 0=ignore + 4 severidades
+  base_channels: 32
+  encoder_depth: 2
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  num_workers: 0
+  checkpoint_dir: "checkpoints"
+  device: "auto"
+
+validation:
+  strategy: "leave_one_fire_out"
+  n_folds: 5
+
+interpretability:
+  top_k_patches: 50
+  confidence_threshold: 0.7
+  output_dir: "outputs/interpretability"

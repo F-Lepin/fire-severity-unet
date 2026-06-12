@@ -28,13 +28,25 @@ def onehot_argmax(onehot: np.ndarray, class_ids: list[int]) -> np.ndarray:
     return out
 
 
+def remap_lulc(
+    lulc: np.ndarray,
+    class_map: dict[int, int],
+    default: int = 0,
+) -> np.ndarray:
+    """Map raw MapBiomas (or other) codes to aggregated model LULC ids."""
+    out = np.full(lulc.shape, default, dtype=np.int16)
+    for raw, mapped in class_map.items():
+        out[lulc == int(raw)] = int(mapped)
+    return out
+
+
 def remap_severity(
     severity: np.ndarray,
     class_map: dict[int, int],
     nodata_values: set[int] | None = None,
 ) -> np.ndarray:
     """
-    Map raw severity values to model classes (0=ignore, 1-3=severity levels).
+    Map raw severity values to model classes (0=ignore, 1-N=severity levels).
     """
     out = np.zeros_like(severity, dtype=np.int64)
     nodata_values = nodata_values or set()
