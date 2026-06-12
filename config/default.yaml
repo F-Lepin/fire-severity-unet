@@ -1,0 +1,70 @@
+# Configuración base — ajustar rutas y clases según tus datos
+
+data:
+  # Directorio con un subdirectorio por incendio: {fire_id}/lulc.tif, severity.tif, scar.tif
+  fires_root: "data/raw/fires"
+  processed_root: "data/processed"
+  patches_root: "data/patches"
+  target_resolution: 30  # metros
+  target_crs: "EPSG:32719"  # UTM zona 19S — ajustar según región
+
+lulc:
+  # Códigos MapBiomas agrupados para el análisis exploratorio
+  classes:
+    1: forest
+    2: shrubland
+    3: grassland
+    4: plantation
+    5: agriculture
+    6: urban
+    7: water
+    8: bare
+  # Coberturas consideradas combustibles para métricas de paisaje
+  combustible_classes: [1, 2, 3, 4]
+
+severity:
+  # Valores en el raster de severidad → clase del modelo
+  # 0 se reserva para fuera de cicatriz / sin dato (ignore_index en la pérdida)
+  class_map:
+    0: 0   # nodata / fuera de cicatriz
+    1: 1   # baja
+    2: 2   # media
+    3: 3   # alta
+  class_names:
+    0: outside
+    1: low
+    2: medium
+    3: high
+
+patches:
+  size: 32
+  min_burn_fraction: 0.25        # mínimo % de píxeles dentro de cicatriz
+  min_valid_severity_fraction: 0.20  # mínimo % con severidad válida (1-3)
+  max_outside_scar_fraction: 0.75    # evitar ventanas casi vacías de quemado
+  samples_per_fire: 200
+  balance_severity: true
+  random_seed: 42
+
+model:
+  in_channels: 8   # debe coincidir con len(lulc.classes)
+  num_classes: 4   # 0=ignore + 3 severidades
+  base_channels: 32
+  encoder_depth: 2  # niveles de downsampling (32→16→8)
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  num_workers: 0
+  checkpoint_dir: "checkpoints"
+  device: "auto"  # auto | cpu | cuda
+
+validation:
+  strategy: "leave_one_fire_out"  # leave_one_fire_out | kfold_fires
+  n_folds: 5
+
+interpretability:
+  top_k_patches: 50
+  confidence_threshold: 0.7
+  output_dir: "outputs/interpretability"
