@@ -1,6 +1,7 @@
 #!/bin/bash
-# NLHPC / LEFTRARU — piloto binario: fold 0 + análisis
-#SBATCH -J fire_severity_bin_f0
+# NLHPC / LEFTRARU — análisis post-entrenamiento (un fold)
+# Uso: sbatch --export=FOLD=0 scripts/slurm_analyze_binary.sh
+#SBATCH -J fire_severity_bin_an
 #SBATCH -p main
 #SBATCH -n 1
 #SBATCH -c 22
@@ -13,20 +14,17 @@
 
 set -euo pipefail
 
+FOLD=${FOLD:-0}
+
 source ~/.bashrc
 conda activate mb_fuego
 
 mkdir -p ~/logs
 cd ~/X_CONGRESO/fire-severity-unet
 
-echo "Host: $(hostname)  Fold: 0  Date: $(date)"
-python -c "import torch; print('CUDA:', torch.cuda.is_available())"
-
-python scripts/train.py --config config/leftraru_binary.yaml --fold 0
-
 python scripts/analyze_results.py \
   --config config/leftraru_binary.yaml \
-  --checkpoint checkpoints_binary/fold_0/best_model.pt \
-  --fold 0
+  --checkpoint "checkpoints_binary/fold_${FOLD}/best_model.pt" \
+  --fold "$FOLD"
 
-echo "Train + analyze fold 0 done."
+echo "Analyze fold $FOLD done."
