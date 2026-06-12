@@ -92,10 +92,28 @@ def ingest_multiband_raster(
         raise ValueError(f"Unknown severity_mode: {severity_mode}")
 
     inside = scar_bin > 0
+    raw_lulc = sorted(int(v) for v in np.unique(lulc))
+    dnbr_vals = dnbr[inside].astype(np.float64) * dnbr_value_scale if inside.any() else np.array([])
+    dnbr_unique = sorted(float(v) for v in np.unique(dnbr_vals)) if dnbr_vals.size else []
+    sev_vals = severity[inside]
+    sev_unique = sorted(int(v) for v in np.unique(sev_vals)) if inside.any() else []
+
+    dnbr_counts: dict[str, int] = {}
+    for u in np.unique(dnbr[inside]) if inside.any() else []:
+        dnbr_counts[str(float(u))] = int((dnbr[inside] == u).sum())
+
+    sev_counts: dict[int, int] = {}
+    for u in sev_unique:
+        sev_counts[int(u)] = int((sev_vals == u).sum())
+
     summary = {
+        "raw_lulc_unique": raw_lulc,
         "lulc_unique": sorted(int(v) for v in np.unique(lulc_out)),
-        "dnbr_unique_in_scar": sorted(int(v) for v in np.unique(dnbr[inside])) if inside.any() else [],
-        "severity_unique_in_scar": sorted(int(v) for v in np.unique(severity[inside])) if inside.any() else [],
+        "lulc_unmapped_pixels": int((lulc_out == 0).sum()) if lulc_remap else 0,
+        "dnbr_unique_in_scar": dnbr_unique,
+        "dnbr_counts_in_scar": dnbr_counts,
+        "severity_unique_in_scar": sev_unique,
+        "severity_counts_in_scar": sev_counts,
         "n_scar_pixels": int(inside.sum()),
     }
 

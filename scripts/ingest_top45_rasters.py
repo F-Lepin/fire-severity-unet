@@ -68,12 +68,23 @@ def main() -> None:
             severity_class_map=severity_class_map,
             dnbr_nodata=dnbr_nodata,
         )
-        print(f"  LULC classes : {summary['lulc_unique']}")
-        print(f"  dNBR in scar : {summary['dnbr_unique_in_scar']}")
-        print(f"  severity     : {summary['severity_unique_in_scar']} ({summary['n_scar_pixels']} px)")
+        print(f"  LULC raw       : {summary['raw_lulc_unique']}")
+        print(f"  LULC agregado  : {summary['lulc_unique']} (sin mapear: {summary['lulc_unmapped_pixels']} px)")
+        print(f"  dNBR in scar   : {summary['dnbr_unique_in_scar']}")
+        print(f"  dNBR counts    : {summary['dnbr_counts_in_scar']}")
+        print(f"  severity       : {summary['severity_unique_in_scar']} counts={summary['severity_counts_in_scar']}")
+        print(f"  scar pixels    : {summary['n_scar_pixels']}")
 
-        if len(summary["severity_unique_in_scar"]) < 2:
-            print("  ⚠ Solo una clase de severidad dentro de la cicatriz — revisar banda dNBR.")
+        n_valid_sev = sum(c for k, c in summary["severity_counts_in_scar"].items() if k > 0)
+        n_sev_classes = sum(1 for k in summary["severity_unique_in_scar"] if k > 0)
+        if len(summary["dnbr_unique_in_scar"]) <= 2:
+            print("  ⚠ Banda dNBR casi binaria (≤2 valores). No hay gradiente para 4 clases MTBS.")
+        if n_sev_classes < 2:
+            print("  ⚠ Menos de 2 clases de severidad válidas — no entrenar hasta corregir dNBR.")
+        elif n_sev_classes < 4:
+            print(f"  ⚠ Solo {n_sev_classes} clase(s) de severidad presentes (se esperan 4).")
+        if summary["lulc_unmapped_pixels"] > 0:
+            print("  ⚠ Hay píxeles LULC sin mapear (clase 0) — ampliar lulc.remap en config.")
 
         if copy_to_processed:
             proc_dir = processed_root / fire_id
