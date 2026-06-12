@@ -75,6 +75,7 @@ Cada patch guarda `fire_id`, coordenadas del centro y clase de severidad en el c
 
 Estrategias implementadas:
 
+- **`holdout_fires`**: fracción de cicatrices enteras a validación (p.ej. 70/30 por incendio).
 - **`leave_one_fire_out`**: entrenar con N−1 cicatrices, validar con 1 completa.
 - **`kfold_fires`**: GroupKFold por `fire_id`.
 

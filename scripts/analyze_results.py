@@ -35,7 +35,9 @@ def main() -> None:
 
     cfg = load_config(args.config)
     icfg = cfg["interpretability"]
-    out_dir = Path(icfg["output_dir"]) / f"fold_{args.fold}"
+    vcfg = cfg.get("validation", {})
+    run_name = vcfg.get("run_name", f"fold_{args.fold}")
+    out_dir = Path(icfg["output_dir"]) / run_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=False)

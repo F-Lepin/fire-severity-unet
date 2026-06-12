@@ -33,6 +33,42 @@ def leave_one_fire_out_splits(
     return splits
 
 
+def holdout_fire_splits(
+    patch_files: list[Path],
+    val_fraction: float = 0.30,
+    seed: int = 42,
+) -> list[tuple[list[Path], list[Path], list[str], list[str]]]:
+    """
+    Single random holdout: ``val_fraction`` of fires go to validation (entire scars).
+
+    Returns one split: (train_files, val_files, train_fire_ids, val_fire_ids).
+    """
+    groups = group_patch_files_by_fire(patch_files)
+    fire_ids = sorted(groups.keys())
+    n_fires = len(fire_ids)
+    if n_fires < 2:
+        raise ValueError("Need at least 2 fires for holdout split.")
+
+    n_val = max(1, int(round(n_fires * val_fraction)))
+    n_val = min(n_val, n_fires - 1)
+
+    rng = np.random.default_rng(seed)
+    perm = rng.permutation(n_fires)
+    val_set = {fire_ids[i] for i in perm[:n_val]}
+
+    train_files: list[Path] = []
+    val_files: list[Path] = []
+    for fid in fire_ids:
+        if fid in val_set:
+            val_files.extend(groups[fid])
+        else:
+            train_files.extend(groups[fid])
+
+    train_fires = sorted(fid for fid in fire_ids if fid not in val_set)
+    val_fires = sorted(val_set)
+    return [(train_files, val_files, train_fires, val_fires)]
+
+
 def kfold_fire_splits(
     patch_files: list[Path],
     n_folds: int = 5,

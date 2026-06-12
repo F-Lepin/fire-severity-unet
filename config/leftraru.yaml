@@ -96,7 +96,10 @@ training:
   device: "auto"
 
 validation:
-  strategy: "leave_one_fire_out"
+  strategy: "holdout_fires"
+  val_fraction: 0.30
+  random_seed: 42
+  run_name: "holdout_7030"
   n_folds: 5
 
 interpretability:
