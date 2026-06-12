@@ -12,7 +12,7 @@
 #SBATCH -o /home/%u/logs/%x_%A_%a.out
 #SBATCH -e /home/%u/logs/%x_%A_%a.err
 
-set -euo pipefail
+set -eo pipefail
 
 FOLD=${SLURM_ARRAY_TASK_ID:-0}
 

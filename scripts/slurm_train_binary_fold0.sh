@@ -11,7 +11,8 @@
 #SBATCH -o /home/%u/logs/%x_%j.out
 #SBATCH -e /home/%u/logs/%x_%j.err
 
-set -euo pipefail
+# set -e: fallar si un comando falla; sin -u para no romper source ~/.bashrc en NLHPC
+set -eo pipefail
 
 source ~/.bashrc
 conda activate mb_fuego

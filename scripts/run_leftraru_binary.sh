@@ -2,7 +2,7 @@
 # Pipeline completo — severidad binaria (baja / alta) en LEFTRARU
 # Uso: bash scripts/run_leftraru_binary.sh [ingest|patches|train|analyze|all] [fold]
 
-set -euo pipefail
+set -eo pipefail
 
 CONFIG="config/leftraru_binary.yaml"
 STEP="${1:-all}"

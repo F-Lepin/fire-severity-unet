@@ -12,7 +12,7 @@
 #SBATCH -o /home/%u/logs/%x_%j.out
 #SBATCH -e /home/%u/logs/%x_%j.err
 
-set -euo pipefail
+set -eo pipefail
 
 FOLD=${FOLD:-0}
 
