@@ -1,4 +1,5 @@
 #!/bin/bash
+# NLHPC — CNN LULC patch classifier (binary severity)
 #SBATCH -J cnn_lulc
 #SBATCH -p main
 #SBATCH -n 1
@@ -10,17 +11,20 @@
 #SBATCH -o /home/%u/logs/%x_%j.out
 #SBATCH -e /home/%u/logs/%x_%j.err
 
-set -euo pipefail
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+echo "=== START cnn_lulc $(date) host=$(hostname) ==="
+
+PROJECT_DIR="${SLURM_SUBMIT_DIR:-${HOME}/X_CONGRESO/fire-severity-unet}"
+cd "${PROJECT_DIR}"
 mkdir -p ~/logs
 
 # shellcheck disable=SC1091
-source scripts/slurm_env.sh
+source "${PROJECT_DIR}/scripts/slurm_env.sh"
 activate_mb_fuego
-set -e
 
-echo "Job started: $(date) on $(hostname)"
+set -eo pipefail
+
 python scripts/train_cnn_lulc_binary.py \
   --config config/cnn_lulc_binary.yaml \
   --generate-patches
-echo "Job finished: $(date)"
+
+echo "=== DONE cnn_lulc $(date) ==="
