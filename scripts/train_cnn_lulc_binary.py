@@ -124,10 +124,15 @@ def main() -> None:
         device=tcfg["device"],
         checkpoint_dir=Path(tcfg["checkpoint_dir"]) / run_name,
         use_class_weights=ccfg.get("use_class_weights", True),
-        use_weighted_sampler=ccfg.get("use_weighted_sampler", False),
+        use_weighted_sampler=ccfg.get("use_weighted_sampler", True),
+        checkpoint_metric=tcfg.get("checkpoint_metric", "macro_f1"),
+        early_stopping_patience=int(tcfg.get("early_stopping_patience", 10)),
+        min_epochs=int(tcfg.get("min_epochs", 5)),
+        augment=tcfg.get("augmentation", {"enabled": False}),
+        seed=int(cfg["patches"].get("random_seed", 42)),
     )
 
-    model, history, log_df = train_cnn_model(train_files, val_files, model_cfg, train_cfg)
+    model, history, log_df, ckpt_meta = train_cnn_model(train_files, val_files, model_cfg, train_cfg)
 
     out_dir = Path(tcfg.get("outputs_dir", "outputs_cnn_lulc_binary")) / run_name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -137,6 +142,17 @@ def main() -> None:
 
     with open(out_dir / "split.json", "w", encoding="utf-8") as f:
         json.dump(split_meta, f, indent=2)
+    with open(out_dir / "checkpoint_meta.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                k: v
+                for k, v in ckpt_meta.items()
+                if k not in {"model_state", "model_cfg"}
+            },
+            f,
+            indent=2,
+            default=str,
+        )
 
     device = resolve_device(tcfg["device"])
     val_ds = LULCPatchDataset(val_files)

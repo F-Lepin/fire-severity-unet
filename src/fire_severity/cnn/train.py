@@ -10,9 +10,13 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, WeightedRandomSampler
-from tqdm import tqdm
 
-from fire_severity.cnn.dataset import LULCPatchDataset, collate_cnn_batch, compute_binary_class_weights
+from fire_severity.cnn.dataset import (
+    LULCPatchDataset,
+    collate_cnn_batch,
+    compute_binary_class_weights,
+    compute_sample_weights,
+)
 from fire_severity.cnn.model import SmallPatchCNN
 from fire_severity.training.trainer import resolve_device
 
@@ -27,7 +31,12 @@ class CNNTrainConfig:
     device: str = "auto"
     checkpoint_dir: Path = Path("checkpoints_cnn_lulc_binary")
     use_class_weights: bool = True
-    use_weighted_sampler: bool = False
+    use_weighted_sampler: bool = True
+    checkpoint_metric: str = "macro_f1"
+    early_stopping_patience: int = 10
+    min_epochs: int = 5
+    augment: dict = field(default_factory=lambda: {"enabled": False})
+    seed: int = 42
 
 
 @dataclass
@@ -35,13 +44,22 @@ class CNNTrainHistory:
     train_loss: list[float] = field(default_factory=list)
     val_loss: list[float] = field(default_factory=list)
     val_acc: list[float] = field(default_factory=list)
+    val_macro_f1: list[float] = field(default_factory=list)
+    val_f1_low: list[float] = field(default_factory=list)
+    val_f1_high: list[float] = field(default_factory=list)
 
 
-def binary_accuracy(logits: torch.Tensor, targets: torch.Tensor) -> float:
-    preds = logits.argmax(dim=1)
-    if len(targets) == 0:
-        return 0.0
-    return float((preds == targets).float().mean().item())
+def _f1_per_class(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int = 2) -> list[float]:
+    scores: list[float] = []
+    for cls in range(num_classes):
+        tp = int(np.sum((y_true == cls) & (y_pred == cls)))
+        fp = int(np.sum((y_true != cls) & (y_pred == cls)))
+        fn = int(np.sum((y_true == cls) & (y_pred != cls)))
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0.0
+        scores.append(f1)
+    return scores
 
 
 def run_epoch(
@@ -51,15 +69,16 @@ def run_epoch(
     optimizer: torch.optim.Optimizer | None,
     device: torch.device,
     train: bool,
-) -> tuple[float, float]:
+) -> tuple[float, float, float, float, float]:
     if train:
         model.train()
     else:
         model.eval()
 
     total_loss = 0.0
-    total_acc = 0.0
     n_batches = 0
+    all_preds: list[np.ndarray] = []
+    all_y: list[np.ndarray] = []
 
     for batch in loader:
         x = batch["x"].to(device)
@@ -76,20 +95,23 @@ def run_epoch(
                 optimizer.step()
 
         total_loss += loss.item()
-        total_acc += binary_accuracy(logits.detach(), y)
         n_batches += 1
+        all_preds.append(logits.argmax(dim=1).detach().cpu().numpy())
+        all_y.append(y.detach().cpu().numpy())
 
-    return total_loss / max(n_batches, 1), total_acc / max(n_batches, 1)
+    y_true = np.concatenate(all_y)
+    y_pred = np.concatenate(all_preds)
+    f1_scores = _f1_per_class(y_true, y_pred)
+    macro_f1 = float(np.mean(f1_scores))
+    acc = float(np.mean(y_true == y_pred))
+    avg_loss = total_loss / max(n_batches, 1)
+    return avg_loss, acc, macro_f1, f1_scores[0], f1_scores[1]
 
 
-def build_train_loader(
-    ds: LULCPatchDataset,
-    cfg: CNNTrainConfig,
-    class_weights: torch.Tensor | None,
-) -> DataLoader:
-    if cfg.use_weighted_sampler and not cfg.use_class_weights:
+def build_train_loader(ds: LULCPatchDataset, cfg: CNNTrainConfig) -> DataLoader:
+    if cfg.use_weighted_sampler:
         labels = ds.metadata["binary_label"].values.astype(int)
-        sample_weights = class_weights[labels] if class_weights is not None else np.ones(len(labels))
+        sample_weights = compute_sample_weights(labels)
         sampler = WeightedRandomSampler(
             weights=torch.tensor(sample_weights, dtype=torch.double),
             num_samples=len(labels),
@@ -111,14 +133,20 @@ def build_train_loader(
     )
 
 
+def _metric_improved(metric_name: str, current: float, best: float) -> bool:
+    if metric_name == "val_loss":
+        return current < best
+    return current > best
+
+
 def train_cnn_model(
     train_files: list[Path],
     val_files: list[Path],
     model_cfg: dict,
     train_cfg: CNNTrainConfig,
-) -> tuple[SmallPatchCNN, CNNTrainHistory, pd.DataFrame]:
+) -> tuple[SmallPatchCNN, CNNTrainHistory, pd.DataFrame, dict]:
     device = resolve_device(train_cfg.device)
-    train_ds = LULCPatchDataset(train_files)
+    train_ds = LULCPatchDataset(train_files, augment=train_cfg.augment, seed=train_cfg.seed)
     val_ds = LULCPatchDataset(val_files)
 
     if len(train_ds) == 0:
@@ -132,8 +160,7 @@ def train_cnn_model(
     else:
         criterion = nn.CrossEntropyLoss()
 
-    cw_for_sampler = class_weights if train_cfg.use_weighted_sampler else None
-    train_loader = build_train_loader(train_ds, train_cfg, cw_for_sampler)
+    train_loader = build_train_loader(train_ds, train_cfg)
     val_loader = DataLoader(
         val_ds,
         batch_size=train_cfg.batch_size,
@@ -154,48 +181,92 @@ def train_cnn_model(
         weight_decay=train_cfg.weight_decay,
     )
 
+    metric_name = train_cfg.checkpoint_metric
     history = CNNTrainHistory()
     train_cfg.checkpoint_dir.mkdir(parents=True, exist_ok=True)
-    best_val_loss = float("inf")
     best_path = train_cfg.checkpoint_dir / "model_best.pt"
 
+    if metric_name == "val_loss":
+        best_score = float("inf")
+    else:
+        best_score = float("-inf")
+
+    best_meta: dict = {}
+    epochs_without_improvement = 0
+
     for epoch in range(train_cfg.epochs):
-        tr_loss, tr_acc = run_epoch(model, train_loader, criterion, optimizer, device, train=True)
-        va_loss, va_acc = run_epoch(model, val_loader, criterion, None, device, train=False)
+        tr_loss, tr_acc, _, _, _ = run_epoch(model, train_loader, criterion, optimizer, device, train=True)
+        va_loss, va_acc, va_macro_f1, va_f1_low, va_f1_high = run_epoch(
+            model, val_loader, criterion, None, device, train=False
+        )
         history.train_loss.append(tr_loss)
         history.val_loss.append(va_loss)
         history.val_acc.append(va_acc)
+        history.val_macro_f1.append(va_macro_f1)
+        history.val_f1_low.append(va_f1_low)
+        history.val_f1_high.append(va_f1_high)
 
-        if va_loss < best_val_loss:
-            best_val_loss = va_loss
-            torch.save(
-                {
-                    "model_state": model.state_dict(),
-                    "model_cfg": model_cfg,
-                    "epoch": epoch,
-                    "val_loss": va_loss,
-                    "val_acc": va_acc,
-                },
-                best_path,
-            )
+        if metric_name == "val_loss":
+            score = va_loss
+        elif metric_name == "val_acc":
+            score = va_acc
+        else:
+            score = va_macro_f1
+
+        if _metric_improved(metric_name, score, best_score):
+            best_score = score
+            epochs_without_improvement = 0
+            best_meta = {
+                "model_state": model.state_dict(),
+                "model_cfg": model_cfg,
+                "epoch": epoch,
+                "val_loss": va_loss,
+                "val_acc": va_acc,
+                "val_macro_f1": va_macro_f1,
+                "val_f1_low": va_f1_low,
+                "val_f1_high": va_f1_high,
+                "checkpoint_metric": metric_name,
+                "checkpoint_score": score,
+            }
+            torch.save(best_meta, best_path)
+        else:
+            epochs_without_improvement += 1
 
         print(
             f"Epoch {epoch + 1}/{train_cfg.epochs} "
-            f"train_loss={tr_loss:.4f} val_loss={va_loss:.4f} val_acc={va_acc:.4f}"
+            f"train_loss={tr_loss:.4f} val_loss={va_loss:.4f} val_acc={va_acc:.4f} "
+            f"macro_f1={va_macro_f1:.4f} f1_high={va_f1_high:.4f}"
         )
+
+        if epoch + 1 >= train_cfg.min_epochs and epochs_without_improvement >= train_cfg.early_stopping_patience:
+            print(
+                f"Early stopping at epoch {epoch + 1} "
+                f"(no improvement in {metric_name} for {train_cfg.early_stopping_patience} epochs)."
+            )
+            break
+
+    if not best_path.exists():
+        raise RuntimeError("No checkpoint was saved during training.")
 
     ckpt = torch.load(best_path, map_location=device, weights_only=False)
     model.load_state_dict(ckpt["model_state"])
+    print(
+        f"Loaded best checkpoint from epoch {ckpt['epoch'] + 1} "
+        f"({metric_name}={ckpt.get('checkpoint_score', best_score):.4f})"
+    )
 
     log_df = pd.DataFrame(
         {
-            "epoch": np.arange(1, train_cfg.epochs + 1),
+            "epoch": np.arange(1, len(history.train_loss) + 1),
             "train_loss": history.train_loss,
             "val_loss": history.val_loss,
             "val_acc": history.val_acc,
+            "val_macro_f1": history.val_macro_f1,
+            "val_f1_low": history.val_f1_low,
+            "val_f1_high": history.val_f1_high,
         }
     )
-    return model, history, log_df
+    return model, history, log_df, ckpt
 
 
 @torch.no_grad()

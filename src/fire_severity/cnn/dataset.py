@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from pathlib import Path
 
 import numpy as np
@@ -9,12 +10,21 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+from fire_severity.cnn.augment import augment_lulc_onehot
+
 
 class LULCPatchDataset(Dataset):
     """Loads one or more CNN patch NPZ bundles (X: one-hot LULC, y: binary label)."""
 
-    def __init__(self, patch_files: list[Path]) -> None:
+    def __init__(
+        self,
+        patch_files: list[Path],
+        augment: dict | None = None,
+        seed: int | None = None,
+    ) -> None:
         self.patch_files = [Path(p) for p in patch_files]
+        self.augment = augment or {"enabled": False}
+        self._rng = random.Random(seed)
         self._x: list[np.ndarray] = []
         self._y: list[int] = []
         self._meta_rows: list[dict] = []
@@ -43,8 +53,11 @@ class LULCPatchDataset(Dataset):
         return len(self._y)
 
     def __getitem__(self, idx: int) -> dict:
+        x = torch.from_numpy(self._x[idx])
+        if self.augment.get("enabled", False):
+            x = augment_lulc_onehot(x, self.augment, self._rng)
         return {
-            "x": torch.from_numpy(self._x[idx]),
+            "x": x,
             "y": torch.tensor(self._y[idx], dtype=torch.long),
             "idx": idx,
         }
@@ -64,3 +77,11 @@ def compute_binary_class_weights(labels: np.ndarray, num_classes: int = 2) -> to
     counts = np.maximum(counts, 1.0)
     weights = counts.sum() / (num_classes * counts)
     return torch.tensor(weights, dtype=torch.float32)
+
+
+def compute_sample_weights(labels: np.ndarray, num_classes: int = 2) -> np.ndarray:
+    """Per-sample weights for WeightedRandomSampler (inverse class frequency)."""
+    counts = np.bincount(labels.astype(int), minlength=num_classes).astype(np.float64)
+    counts = np.maximum(counts, 1.0)
+    class_weights = 1.0 / counts
+    return class_weights[labels.astype(int)]

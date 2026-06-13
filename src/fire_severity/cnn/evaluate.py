@@ -148,7 +148,10 @@ def plot_precision_recall_curve(y_true: np.ndarray, y_prob: np.ndarray, out_path
 
 
 def plot_training_log(log_df: pd.DataFrame, out_path: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+    ncols = 3 if "val_macro_f1" in log_df.columns else 2
+    fig, axes = plt.subplots(1, ncols, figsize=(4 * ncols, 4))
+    if ncols == 2:
+        axes = list(axes)
     axes[0].plot(log_df["epoch"], log_df["train_loss"], label="train")
     axes[0].plot(log_df["epoch"], log_df["val_loss"], label="val")
     axes[0].set_title("Loss")
@@ -156,6 +159,11 @@ def plot_training_log(log_df: pd.DataFrame, out_path: Path) -> None:
     axes[1].plot(log_df["epoch"], log_df["val_acc"], label="val acc")
     axes[1].set_title("Accuracy (validación)")
     axes[1].legend()
+    if ncols == 3:
+        axes[2].plot(log_df["epoch"], log_df["val_macro_f1"], label="macro F1")
+        axes[2].plot(log_df["epoch"], log_df["val_f1_high"], label="F1 alta")
+        axes[2].set_title("F1 validación")
+        axes[2].legend()
     fig.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_path, dpi=150)
